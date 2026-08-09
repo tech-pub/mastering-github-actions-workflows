@@ -1,2 +1,5 @@
-# mastering-github-actions-workflows
-Code samples for "Mastering GitHub Actions Workflows"
+# Mastering GitHub Actions Workflows
+
+From Zero to Enterprise-Grade CI/CD Pipelines
+
+Code samples generated from the AI Ebook Studio.
