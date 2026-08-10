@@ -1,77 +1,103 @@
-# reusable_workflow.py - Simulates a reusable workflow for CI/CD.
+# python_linter.py
+import os
+import sys
 
-def lint_code(repo_name):
-    """Simulates linting code for a given repository."""
-    print(f"[{repo_name}] Linting code... Done.")
-    return True
-
-def run_tests(repo_name, test_suite="unit"):
-    """Simulates running tests for a given repository."""
-    print(f"[{repo_name}] Running {test_suite} tests... Done.")
-    return True
-
-def deploy_to_staging(repo_name):
-    """Simulates deploying the application to a staging environment."""
-    print(f"[{repo_name}] Deploying to staging... Done.")
-    return True
-
-def security_scan(repo_name):
-    """Simulates running a security scan."""
-    print(f"[{repo_name}] Running security scan... Done.")
-    return True
-
-# enterprise_policy.py - Simulates an organization-wide policy enforcement.
-
-class ComplianceError(Exception):
-    """Custom exception for compliance violations."""
-    pass
-
-def enforce_enterprise_workflow(repo_name, required_steps):
+def check_file_for_patterns(filepath, patterns):
     """
-    Enforces a standardized CI/CD workflow across repositories.
+    Checks if a file contains any of the specified patterns.
+    Returns True if any pattern is found, False otherwise.
+    """
+    try:
+        with open(filepath, 'r') as f:
+            content = f.read()
+            for pattern in patterns:
+                if pattern in content:
+                    return True
+        return False
+    except FileNotFoundError:
+        print(f"Error: File not found at {filepath}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Error reading file {filepath}: {e}", file=sys.stderr)
+        return False
+
+def enforce_workflow_policy(workflow_file, required_jobs, restricted_runners):
+    """
+    Enforces governance policies on a GitHub Actions workflow file.
 
     Args:
-        repo_name (str): The name of the repository.
-        required_steps (list): A list of required functions (steps) to execute.
+        workflow_file (str): Path to the GitHub Actions workflow YAML file.
+        required_jobs (list): List of job names that must be present.
+        restricted_runners (list): List of runner types that are not allowed.
 
-    Raises:
-        ComplianceError: If any required step fails.
+    Returns:
+        bool: True if all policies are met, False otherwise.
     """
-    print(f"\n--- Enforcing enterprise workflow for: {repo_name} ---")
-    for step_func in required_steps:
-        try:
-            if not step_func(repo_name):
-                raise ComplianceError(f"Step '{step_func.__name__}' failed for {repo_name}.")
-        except Exception as e:
-            raise ComplianceError(f"Error during step '{step_func.__name__}' for {repo_name}: {e}")
-    print(f"--- Workflow enforcement for {repo_name} successful. ---")
+    print(f"Checking workflow: {workflow_file}")
 
+    # Policy 1: Ensure specific jobs are present (e.g., 'security-scan', 'lint')
+    for job in required_jobs:
+        if not check_file_for_patterns(workflow_file, [f"  {job}:"]):
+            print(f"  Policy Violation: Required job '{job}' is missing.", file=sys.stderr)
+            return False
+
+    # Policy 2: Prevent use of restricted runner types (e.g., self-hosted runners without approval)
+    for runner in restricted_runners:
+        if check_file_for_patterns(workflow_file, [f"  runs-on: {runner}"]):
+            print(f"  Policy Violation: Restricted runner '{runner}' found.", file=sys.stderr)
+            return False
+
+    print("  All policies met for this workflow.")
+    return True
 
 if __name__ == "__main__":
-    # Define the enterprise-mandated CI/CD workflow steps
-    enterprise_standard_workflow = [
-        lint_code,
-        run_tests,
-        security_scan,
-        deploy_to_staging,
-    ]
+    # Simulate a GitHub Actions workflow file
+    # In a real scenario, this would be read from the actual .github/workflows directory
+    example_workflow_content = """
+name: CI/CD Pipeline
+on: [push, pull_request]
 
-    # Simulate different repositories adopting (or not) the reusable workflow
-    repositories = ["frontend-app", "backend-service", "data-pipeline"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run tests
+      run: echo "Running tests..."
 
-    for repo in repositories:
-        try:
-            enforce_enterprise_workflow(repo, enterprise_standard_workflow)
-        except ComplianceError as e:
-            print(f"Compliance violation detected for {repo}: {e}")
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Perform security scan
+      run: echo "Scanning for vulnerabilities..."
 
-    # Example of a repository with a custom test suite
-    print("\n--- Simulating a repository with a custom test suite ---")
-    try:
-        enforce_enterprise_workflow("mobile-app", [
-            lint_code,
-            lambda r: run_tests(r, test_suite="e2e"), # Custom step within policy
-            security_scan
-        ])
-    except ComplianceError as e:
-        print(f"Compliance violation detected for mobile-app: {e}")
+  deploy:
+    runs-on: self-hosted # This would be a restricted runner in many organizations
+    steps:
+    - name: Deploy application
+      run: echo "Deploying application..."
+"""
+
+    # Create a dummy workflow file for testing
+    workflow_path = "example_workflow.yml"
+    with open(workflow_path, "w") as f:
+        f.write(example_workflow_content)
+
+    # Define organization-wide policies
+    org_required_jobs = ["build", "security-scan"]
+    org_restricted_runners = ["self-hosted", "windows-latest"]
+
+    # Enforce policies on the example workflow
+    policy_status = enforce_workflow_policy(
+        workflow_path, org_required_jobs, org_restricted_runners
+    )
+
+    if policy_status:
+        print("\nWorkflow passed all governance checks.")
+        sys.exit(0)
+    else:
+        print("\nWorkflow failed governance checks. Manual review required.", file=sys.stderr)
+        sys.exit(1)
+
+    # Clean up the dummy file
+    os.remove(workflow_path)
