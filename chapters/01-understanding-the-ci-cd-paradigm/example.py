@@ -1,94 +1,75 @@
 import os
+import subprocess
 
-# --- Simulate a simplified "manual deployment" process ---
-def manual_deployment(app_version: str, target_environment: str):
+def simulate_manual_deployment():
     """
-    Simulates a manual deployment process.
-    Highlights inconsistencies and potential errors.
+    Simulates a manual deployment process with potential for human error.
+    A junior engineer might accidentally deploy the wrong version or misconfigure.
     """
-    print(f"--- Starting Manual Deployment for App v{app_version} to {target_environment} ---")
-    
-    # Junior engineers often make mistakes or forget steps
-    if target_environment == "production":
-        print("WARNING: Double-checking production deployment steps manually...")
-        user_input = input("Are you sure you want to deploy to PROD? (yes/no): ").lower()
-        if user_input != "yes":
-            print("Manual deployment to production aborted.")
-            return False
+    print("--- Starting Manual Deployment Simulation ---")
+    app_version = input("Enter application version to deploy (e.g., v1.0.0, v1.0.1): ")
+    config_setting = input("Enter a critical configuration setting (e.g., 'production' or 'staging'): ")
 
-    # Simulate configuration file updates
-    config_file = f"config_{target_environment}.txt"
+    if not app_version.startswith("v"):
+        print("ERROR: Manual deployment failed! Invalid version format. Must start with 'v'.")
+        return False
+
+    if config_setting not in ["production", "staging"]:
+        print("ERROR: Manual deployment failed! Invalid configuration setting. Must be 'production' or 'staging'.")
+        return False
+
+    print(f"Manually deploying version: {app_version} with configuration: {config_setting}...")
+    # Simulate deployment steps
     try:
-        with open(config_file, "w") as f:
-            f.write(f"APP_VERSION={app_version}\n")
-            f.write(f"DATABASE_URL=manual_db_{target_environment}\n")
-            # Junior engineer might forget to update a critical setting
-            if target_environment == "staging":
-                f.write("DEBUG_MODE=True # Forgot to disable for production!\n") 
-            else:
-                f.write("DEBUG_MODE=False\n")
-        print(f"  - Updated {config_file} manually.")
-        print(f"  - Deployed app version {app_version}.")
-    except IOError as e:
-        print(f"  - Error updating config file: {e}")
+        # Imagine copying files, running scripts, etc.
+        subprocess.run(['echo', f'Deploying {app_version} to {config_setting} environment...'], check=True)
+        print("Manual deployment successful (simulated).")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Manual deployment failed during execution: {e}")
         return False
 
-    # Simulate server restart - could fail if dependencies are missing
-    print("  - Restarting server (manual step, prone to errors)...")
-    # Imagine this fails intermittently due to manual setup differences
-    if target_environment == "production" and app_version == "1.1":
-        print("  - ERROR: Production server restart failed due to missing dependency (forgot to install manually)!")
+def simulate_iac_deployment(app_version: str, config_setting: str):
+    """
+    Simulates an Infrastructure-as-Code (IaC) driven deployment.
+    This process is automated and consistent, reducing human error.
+    """
+    print("\n--- Starting Infrastructure-as-Code (IaC) Deployment Simulation ---")
+    print(f"Using IaC to deploy version: {app_version} with configuration: {config_setting}...")
+
+    # In a real scenario, this would involve tools like Terraform, Ansible, etc.
+    # We'll simulate by checking the parameters and confirming the deployment.
+    if not app_version.startswith("v"):
+        print("ERROR: IaC deployment failed! Invalid version format detected by IaC script.")
         return False
-        
-    print(f"--- Manual Deployment to {target_environment} finished. ---")
-    return True
 
-# --- Illustrate the need for Infrastructure as Code (IaC) / Automation ---
-# In a real CI/CD pipeline (like GitHub Actions), these steps would be automated.
+    if config_setting not in ["production", "staging"]:
+        print("ERROR: IaC deployment failed! Invalid configuration setting detected by IaC script.")
+        return False
 
-def automated_deployment_step(step_name: str, success: bool = True):
-    """Simulates a single step in an automated CI/CD pipeline."""
-    if success:
-        print(f"[✅ CI/CD] Executing: {step_name}")
-    else:
-        print(f"[❌ CI/CD] Failed: {step_name}")
-        # In a real pipeline, this would stop the workflow
-
-def ci_cd_pipeline(app_version: str, target_environment: str):
-    """
-    Simulates a CI/CD pipeline using 'Infrastructure as Code' principles.
-    Each step is explicitly defined and automated, ensuring consistency.
-    """
-    print(f"\n--- Starting CI/CD Pipeline for App v{app_version} to {target_environment} ---")
-
-    automated_deployment_step("Checkout code")
-    automated_deployment_step("Install dependencies")
-    automated_deployment_step("Run unit tests") # Ensures code quality
-    automated_deployment_step("Build artifacts")
-
-    # Configuration is defined as code, ensuring consistency across environments
-    automated_deployment_step(f"Prepare configuration for {target_environment} (IaC)")
-    
-    # Deployment is automated and idempotent
-    automated_deployment_step(f"Deploy app v{app_version} to {target_environment} (Automated)")
-    automated_deployment_step(f"Run integration tests on {target_environment}") # Verifies deployment
-
-    print(f"--- CI/CD Pipeline to {target_environment} finished. ---")
-
+    # Simulate IaC applying infrastructure and deploying the app
+    try:
+        # Imagine calling an IaC tool like 'terraform apply -var="app_version={app_version}"'
+        subprocess.run(['echo', f'Executing IaC script for {app_version} to {config_setting} environment...'], check=True)
+        print("IaC deployment successful (simulated). Consistency ensured.")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"IaC deployment failed during execution: {e}")
+        return False
 
 if __name__ == "__main__":
-    print("Scenario 1: Manual Deployments - Prone to errors and inconsistencies.")
-    manual_deployment("1.0", "staging")
-    manual_deployment("1.0", "production") # Will prompt for confirmation
-    manual_deployment("1.1", "production") # Simulates a production failure
+    print("Scenario 1: Junior engineer attempts manual deployment (prone to error).")
+    success_manual = simulate_manual_deployment()
+    print(f"Manual deployment result: {'Success' if success_manual else 'Failure'}")
 
-    print("\n" + "="*80 + "\n")
+    print("\nScenario 2: Automated deployment via Infrastructure-as-Code (consistent and reliable).")
+    # These parameters would come from a GitHub Actions workflow or a version control system.
+    IAC_APP_VERSION = "v2.0.0"
+    IAC_CONFIG = "production"
+    success_iac = simulate_iac_deployment(IAC_APP_VERSION, IAC_CONFIG)
+    print(f"IaC deployment result: {'Success' if success_iac else 'Failure'}")
 
-    print("Scenario 2: CI/CD Pipeline - Consistent, repeatable, and less error-prone.")
-    ci_cd_pipeline("1.0", "staging")
-    ci_cd_pipeline("1.1", "production")
-
-    # Clean up simulated config files
-    for env in ["staging", "production"]:
-        if os.path.exists(f"config_{env}.txt"):
-            os.remove(f"config_{env}.txt")
+    print("\n--- Summary ---")
+    print("Manual deployments are risky due to human error and inconsistency.")
+    print("Infrastructure-as-Code (IaC) provides automation and consistency,")
+    print("making deployments reliable, which is a core tenet of CI/CD and GitHub Actions.")
