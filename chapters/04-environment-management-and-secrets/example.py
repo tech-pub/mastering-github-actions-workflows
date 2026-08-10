@@ -1,67 +1,88 @@
+# This example simulates a secure environment for a Python application
+# demonstrating the use of 'secrets' (represented by environment variables)
+# and 'environments' (represented by different function calls).
+
 import os
-import getpass
 
-def deploy_to_environment(environment_name):
-    """
-    Simulates deploying to a given environment using environment-specific secrets.
-    In a real scenario, this would involve using actual credentials to interact
-    with a cloud provider, database, or other service.
-    """
-    print(f"\n--- Attempting deployment to {environment_name} environment ---")
+# --- Simulate GitHub Secrets Management ---
+# In a real GitHub Actions workflow, these would be securely fetched
+# via `secrets.MY_API_KEY` or `secrets.DATABASE_PASSWORD`.
+# For this local simulation, we use environment variables.
 
-    # In a GitHub Actions workflow, these would be injected as environment variables
-    # from GitHub Secrets configured for the specific environment.
-    # For local simulation, we'll use os.getenv or prompt the user.
+def set_mock_secrets(api_key, db_password):
+    """Sets mock environment variables to simulate GitHub Secrets."""
+    os.environ['MY_API_KEY'] = api_key
+    os.environ['DATABASE_PASSWORD'] = db_password
+    print("Mock secrets loaded.")
 
-    # Example 1: A "secret" that might be a database password or API key
-    db_password = os.getenv(f"{environment_name.upper()}_DB_PASSWORD")
-    if db_password:
-        print(f"Retrieved DB_PASSWORD for {environment_name} (first 3 chars): {db_password[:3]}...")
+def get_secret(name):
+    """Retrieves a 'secret' (environment variable)."""
+    secret_value = os.environ.get(name)
+    if secret_value:
+        return secret_value
     else:
-        print(f"DB_PASSWORD not found for {environment_name}. This would be an error in production.")
-        # For simulation, let's prompt locally if not found
-        db_password = getpass.getpass(f"Enter DB_PASSWORD for {environment_name}: ")
-        print(f"User provided DB_PASSWORD (first 3 chars): {db_password[:3]}...")
+        raise ValueError(f"Secret '{name}' not found. "
+                         "Ensure it's configured in your GitHub Secrets.")
 
-    # Example 2: A "secret" that might be an API endpoint URL
-    api_endpoint = os.getenv(f"{environment_name.upper()}_API_ENDPOINT")
-    if api_endpoint:
-        print(f"Retrieved API_ENDPOINT for {environment_name}: {api_endpoint}")
-    else:
-        print(f"API_ENDPOINT not found for {environment_name}. Using a default for simulation.")
-        api_endpoint = f"https://api.{environment_name}.example.com"
-        print(f"Using default API_ENDPOINT: {api_endpoint}")
+# --- Simulate GitHub Environments ---
+# Different 'environments' (e.g., staging, production) often have
+# different secret values and configurations.
 
-    # Example 3: An "environment variable" that might be a non-sensitive configuration
-    app_version = os.getenv(f"{environment_name.upper()}_APP_VERSION", "1.0.0")
-    print(f"Application Version for {environment_name}: {app_version}")
+def deploy_to_staging():
+    """Simulates deployment to the 'staging' environment."""
+    print("\n--- Deploying to Staging Environment ---")
+    try:
+        api_key = get_secret('MY_API_KEY')
+        db_password = get_secret('DATABASE_PASSWORD')
 
-    # Simulate using the secrets to perform an action
-    if db_password and api_endpoint:
-        print(f"Successfully retrieved all necessary credentials for {environment_name}.")
-        print(f"Simulating connection to {api_endpoint} with provided credentials...")
-        print(f"Deployment to {environment_name} environment successful (simulated)!")
-    else:
-        print(f"Deployment to {environment_name} failed due to missing credentials (simulated).")
+        # In a real application, these would be used to connect to
+        # staging resources.
+        print(f"Staging API Key: {api_key[:4]}...{api_key[-4:]}") # Masking for display
+        print(f"Staging DB Password: {db_password[:2]}...{db_password[-2:]}") # Masking for display
+        print("Staging deployment logic executed successfully.")
+    except ValueError as e:
+        print(f"Staging deployment failed: {e}")
 
+def deploy_to_production():
+    """Simulates deployment to the 'production' environment."""
+    print("\n--- Deploying to Production Environment ---")
+    try:
+        api_key = get_secret('MY_API_KEY')
+        db_password = get_secret('DATABASE_PASSWORD')
+
+        # In a real application, these would be used to connect to
+        # production resources.
+        print(f"Production API Key: {api_key[:4]}...{api_key[-4:]}") # Masking for display
+        print(f"Production DB Password: {db_password[:2]}...{db_password[-2:]}") # Masking for display
+        print("Production deployment logic executed successfully.")
+    except ValueError as e:
+        print(f"Production deployment failed: {e}")
+
+# --- Main execution flow ---
 if __name__ == "__main__":
-    # Simulate different environments
-    # In a real GitHub Actions workflow, 'staging' and 'production' would
-    # be distinct GitHub Environments with their own sets of secrets.
+    # --- Step 1: Configure secrets for Staging and Production ---
+    # In a real GitHub workflow, you would define these secrets
+    # directly in GitHub's repository or organization settings,
+    # and in environment-specific secrets.
+    set_mock_secrets(
+        api_key="sk_test_12345_staging",
+        db_password="staging_db_secret_pass"
+    )
 
-    # To run this locally and test secret retrieval:
-    # 1. Set environment variables in your shell before running:
-    #    export STAGING_DB_PASSWORD="staging_secure_pass"
-    #    export STAGING_API_ENDPOINT="https://api.staging.example.com"
-    #    export PRODUCTION_DB_PASSWORD="prod_very_secure_pass"
-    #    export PRODUCTION_API_ENDPOINT="https://api.production.example.com"
-    #    export PRODUCTION_APP_VERSION="2.1.0"
-    # 2. Or, the script will prompt for missing values.
+    # --- Step 2: Run deployment to different environments ---
+    # This demonstrates that the same code can use environment-specific
+    # secrets based on the triggered workflow or environment.
+    deploy_to_staging()
 
-    deploy_to_environment("staging")
-    deploy_to_environment("production")
+    # --- Simulate different secrets for Production (e.g., via environment-specific secrets) ---
+    print("\n--- Simulating loading production secrets ---")
+    set_mock_secrets(
+        api_key="sk_live_abcde_production",
+        db_password="production_db_super_secret_pass"
+    )
+    deploy_to_production()
 
-    print("\n--- End of deployment simulations ---")
-    print("This example demonstrates how different environments (staging/production)")
-    print("can access their own specific, securely stored 'secrets' and configurations,")
-    print("avoiding hardcoding sensitive data in the repository.")
+    # Clean up mock environment variables
+    del os.environ['MY_API_KEY']
+    del os.environ['DATABASE_PASSWORD']
+    print("\nMock secrets cleared.")
