@@ -1,82 +1,75 @@
 import time
 import random
-from datetime import datetime
+import json
 
-# Simulate a complex build step with potential delays or failures
-def simulate_build_step(step_name, min_duration=1, max_duration=5, success_rate=0.9):
+# Simulate a workflow step's execution with varying success and duration
+def run_workflow_step(step_name, fail_rate=0.1, min_duration=0.5, max_duration=2.0):
     start_time = time.time()
-    print(f"[{datetime.now().isoformat()}] INFO: Starting step '{step_name}'...")
-    try:
-        # Simulate work being done
-        duration = random.uniform(min_duration, max_duration)
-        time.sleep(duration)
+    successful = random.random() > fail_rate
+    duration = random.uniform(min_duration, max_duration)
+    time.sleep(duration)
+    end_time = time.time()
 
-        if random.random() > success_rate:
-            raise RuntimeError(f"Simulated failure in step '{step_name}'")
+    status = "SUCCESS" if successful else "FAILURE"
+    log_entry = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(start_time)),
+        "step_name": step_name,
+        "status": status,
+        "duration_seconds": round(duration, 3),
+        "message": f"{step_name} completed with status {status}"
+    }
 
-        end_time = time.time()
-        print(f"[{datetime.now().isoformat()}] INFO: Step '{step_name}' completed successfully in {end_time - start_time:.2f} seconds.")
-        return True, end_time - start_time
-    except Exception as e:
-        end_time = time.time()
-        print(f"[{datetime.now().isoformat()}] ERROR: Step '{step_name}' failed after {end_time - start_time:.2f} seconds. Error: {e}")
-        return False, end_time - start_time
+    # Simulate logging to a structured format (e.g., JSON for easy parsing)
+    print(json.dumps(log_entry))
+    return successful, duration
 
-# Simulate an entire workflow run
-def run_workflow():
-    workflow_start_time = time.time()
-    print(f"[{datetime.now().isoformat()}] INFO: Workflow started.")
+# Simulate a multi-step GitHub Actions workflow
+def simulate_github_workflow():
+    print("--- Starting Workflow Simulation ---")
+    workflow_results = []
+    workflow_start = time.time()
 
-    results = {}
-
-    # Step 1: Checkout repository
-    success, duration = simulate_build_step("Checkout Code", min_duration=0.5, max_duration=1.5)
-    results["Checkout Code"] = {"success": success, "duration": duration}
+    # Step 1: Build Application
+    success, duration = run_workflow_step("Build Application", fail_rate=0.05, min_duration=1.0, max_duration=3.0)
+    workflow_results.append({"step": "Build Application", "success": success, "duration": duration})
     if not success:
-        print(f"[{datetime.now().isoformat()}] CRITICAL: Workflow aborted due to failure in 'Checkout Code'.")
-        return False, results
+        print("Workflow terminated early due to 'Build Application' failure.")
+        return False, workflow_results
 
-    # Step 2: Install dependencies
-    success, duration = simulate_build_step("Install Dependencies", min_duration=2, max_duration=7, success_rate=0.8)
-    results["Install Dependencies"] = {"success": success, "duration": duration}
+    # Step 2: Run Unit Tests
+    success, duration = run_workflow_step("Run Unit Tests", fail_rate=0.15, min_duration=2.0, max_duration=5.0)
+    workflow_results.append({"step": "Run Unit Tests", "success": success, "duration": duration})
     if not success:
-        print(f"[{datetime.now().isoformat()}] CRITICAL: Workflow aborted due to failure in 'Install Dependencies'.")
-        return False, results
+        print("Workflow terminated early due to 'Run Unit Tests' failure.")
+        return False, workflow_results
 
-    # Step 3: Run tests
-    success, duration = simulate_build_step("Run Unit Tests", min_duration=3, max_duration=10, success_rate=0.95)
-    results["Run Unit Tests"] = {"success": success, "duration": duration}
+    # Step 3: Deploy to Staging (more prone to failures)
+    success, duration = run_workflow_step("Deploy to Staging", fail_rate=0.2, min_duration=3.0, max_duration=7.0)
+    workflow_results.append({"step": "Deploy to Staging", "success": success, "duration": duration})
     if not success:
-        print(f"[{datetime.now().isoformat()}] ERROR: 'Run Unit Tests' failed. Proceeding with caution.")
-        # In a real scenario, this might abort or notify. Here we continue to show downstream impact.
+        print("Workflow terminated early due to 'Deploy to Staging' failure.")
+        return False, workflow_results
 
-    # Step 4: Build artifact
-    success, duration = simulate_build_step("Build Artifact", min_duration=1.5, max_duration=6, success_rate=0.99)
-    results["Build Artifact"] = {"success": success, "duration": duration}
+    # Step 4: Integration Tests
+    success, duration = run_workflow_step("Integration Tests", fail_rate=0.1, min_duration=2.5, max_duration=6.0)
+    workflow_results.append({"step": "Integration Tests", "success": success, "duration": duration})
     if not success:
-        print(f"[{datetime.now().isoformat()}] CRITICAL: Workflow aborted due to failure in 'Build Artifact'.")
-        return False, results
+        print("Workflow terminated early due to 'Integration Tests' failure.")
+        return False, workflow_results
 
-    workflow_end_time = time.time()
-    total_workflow_duration = workflow_end_time - workflow_start_time
-    print(f"[{datetime.now().isoformat()}] INFO: Workflow finished in {total_workflow_duration:.2f} seconds.")
-    return True, results
+    workflow_end = time.time()
+    total_workflow_duration = round(workflow_end - workflow_start, 3)
+    print(json.dumps({
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(workflow_end)),
+        "workflow_status": "COMPLETED_SUCCESSFULLY",
+        "total_duration_seconds": total_workflow_duration
+    }))
+    print("--- Workflow Simulation Finished ---")
+    return True, workflow_results
 
 if __name__ == "__main__":
-    print("--- Starting Workflow Simulation ---")
-    workflow_overall_success, step_results = run_workflow()
-
-    print("\n--- Workflow Analysis ---")
-    print(f"Workflow Status: {'SUCCESS' if workflow_overall_success else 'FAILURE'}")
-    print("Step-by-step breakdown:")
-    for step, data in step_results.items():
-        status = "SUCCESS" if data["success"] else "FAILED"
-        print(f"  - {step}: {status}, Duration: {data['duration']:.2f}s")
-        if not data["success"]:
-            print(f"    ACTION REQUIRED: Investigate '{step}' for bottlenecks or errors.")
-
-    long_steps = {step: data['duration'] for step, data in step_results.items() if data['duration'] > 5}
-    if long_steps:
-        print("\nPotential Bottlenecks (steps over 5 seconds):")
-        for step, duration in sorted(long_steps.items(), key=lambda item: item[1], reverse=True):
-            print(f"  - {step}: {duration:.2f}s")
+    # The goal is to produce structured logs that can be analyzed to understand
+    # step durations, failure rates, and identify bottlenecks or flaky steps.
+    print("Simulating a workflow run to generate structured logs for observability.")
+    print("Each line represents a JSON log entry from a workflow step.")
+    simulate_github_workflow()
