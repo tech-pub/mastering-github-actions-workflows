@@ -1,82 +1,99 @@
-# This script demonstrates how to integrate and use a community-driven
-# GitHub Action (if it were a Python function) to perform a common task:
-# linting Python code.
-
-# In a real GitHub Actions workflow, you would use 'uses: community/action@v1'
-# to call such an action directly. Here, we simulate its behavior with a Python function.
-
 import os
+import subprocess
+import shutil
 
-def run_pylint(file_path: str) -> bool:
+class GitHubActionsSimulator:
     """
-    Simulates a 'community/pylint-action@v1' GitHub Action.
-    Checks a Python file for linting errors using a simplified pylint-like logic.
-    Returns True if no errors, False otherwise.
+    Simulates a GitHub Actions workflow runner to demonstrate action reuse.
     """
-    print(f"--- Simulating pylint-action for {file_path} ---")
-    if not os.path.exists(file_path):
-        print(f"Error: File '{file_path}' not found.")
-        return False
 
-    with open(file_path, 'r') as f:
-        content = f.read()
+    def __init__(self, workspace_dir="simulated_workspace"):
+        self.workspace_dir = workspace_dir
+        os.makedirs(self.workspace_dir, exist_ok=True)
+        print(f"Initialized GitHub Actions simulator in: {os.path.abspath(workspace_dir)}")
 
-    errors_found = []
+    def _run_command(self, command, cwd=None):
+        """Helper to run shell commands and capture output."""
+        try:
+            result = subprocess.run(command, cwd=cwd or self.workspace_dir,
+                                    check=True, shell=True,
+                                    capture_output=True, text=True)
+            print(f"  CMD Output (stdout):\n{result.stdout.strip()}")
+            if result.stderr:
+                print(f"  CMD Output (stderr):\n{result.stderr.strip()}")
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            print(f"  ERROR: Command failed with exit code {e.returncode}")
+            print(f"  Stderr:\n{e.stderr}")
+            print(f"  Stdout:\n{e.stdout}")
+            raise
 
-    # Simplified linting rules:
-    # 1. Check for 'print(' statements (often discouraged in production code)
-    if "print(" in content:
-        errors_found.append("Found 'print()' statement.")
-    # 2. Check for missing docstrings in functions (very basic check)
-    if "def " in content and '"""' not in content:
-        errors_found.append("Possible missing docstring in function.")
-    # 3. Check for 'TODO' comments (as a reminder)
-    if "TODO" in content:
-        errors_found.append("Found 'TODO' comment.")
+    def simulate_checkout_action(self, repo_url="https://github.com/octocat/Spoon-Knife"):
+        """
+        Simulates the 'actions/checkout' action to clone a repository.
+        This represents reusing a common action.
+        """
+        print(f"\n--- Simulating 'actions/checkout' for {repo_url} ---")
+        target_path = os.path.join(self.workspace_dir, "cloned_repo")
+        if os.path.exists(target_path):
+            shutil.rmtree(target_path)
+            print(f"  Removed existing '{target_path}'")
 
-    if errors_found:
-        print("Linting errors found:")
-        for error in errors_found:
-            print(f"- {error}")
-        return False
-    else:
-        print("No linting errors found.")
-        return True
+        print(f"  Cloning '{repo_url}' into '{target_path}'...")
+        # In a real GitHub Action, this would be handled by the action itself.
+        # Here, we simulate its effect.
+        self._run_command(f"git clone {repo_url} {target_path}", cwd=self.workspace_dir)
+        print(f"  Repository checked out. Contents:")
+        self._run_command(f"ls -F {target_path}")
+        return target_path
 
-def main():
-    # Create a dummy Python file to lint
-    test_file_name = "example_code.py"
-    with open(test_file_name, "w") as f:
-        f.write("""
-import os
+    def simulate_custom_action_step(self, script_content, name="Custom Script Step"):
+        """
+        Simulates a custom step that might be a simple script or part of a reusable action.
+        """
+        print(f"\n--- Simulating: {name} ---")
+        script_path = os.path.join(self.workspace_dir, "temp_script.sh")
+        with open(script_path, "w") as f:
+            f.write(script_content)
+        os.chmod(script_path, 0o755) # Make it executable
 
-def my_function():
-    # TODO: Add more features
-    print("Hello, world!") # This will be flagged by our linter
-    pass
+        print(f"  Running script:\n{script_content.strip()}")
+        self._run_command(f"{script_path}", cwd=self.workspace_dir)
+        os.remove(script_path)
 
-class MyClass:
-    def __init__(self):
-        pass # This function has no docstring, might be flagged
+    def cleanup(self):
+        """Removes the simulated workspace."""
+        if os.path.exists(self.workspace_dir):
+            shutil.rmtree(self.workspace_dir)
+            print(f"\nCleaned up workspace: {self.workspace_dir}")
 
+# --- Demonstrate the simulation ---
 if __name__ == "__main__":
-    my_function()
-""")
+    simulator = GitHubActionsSimulator()
 
-    print(f"Created '{test_file_name}' for testing.")
+    try:
+        # Step 1: Reuse the 'actions/checkout' action (simulated)
+        # This prevents us from writing 'git clone ...' ourselves in every workflow.
+        repo_path = simulator.simulate_checkout_action()
 
-    # Simulate a GitHub Actions workflow step using the community action
-    print("\n--- GitHub Actions Workflow Step: Linting Python Code ---")
-    linting_successful = run_pylint(test_file_name)
+        # Step 2: Use a simple custom script step (like a 'run' step in a workflow)
+        # This is what we'd write if no action existed for a task.
+        simulator.simulate_custom_action_step(
+            "echo 'Hello from a custom script!'\nls -F",
+            name="Manual Listing of Workspace"
+        )
 
-    if linting_successful:
-        print("\nWorkflow step: Python linting PASSED.")
-    else:
-        print("\nWorkflow step: Python linting FAILED. Please fix the issues.")
+        # Step 3: Imagine a hypothetical 'actions/upload-artifact' (simulated)
+        # Instead of writing 'tar -czf artifact.tar.gz ./dist && upload_to_s3 ...',
+        # we'd just use a pre-built action. Here, we simulate its effect.
+        print("\n--- Simulating 'actions/upload-artifact' ---")
+        os.makedirs(os.path.join(repo_path, "build"), exist_ok=True)
+        with open(os.path.join(repo_path, "build", "app.log"), "w") as f:
+            f.write("Application build log content.")
+        print(f"  Created a dummy artifact: {os.path.join(repo_path, 'build', 'app.log')}")
+        print("  (In a real workflow, 'actions/upload-artifact' would now zip and upload this.)")
 
-    # Clean up the dummy file
-    os.remove(test_file_name)
-    print(f"\nCleaned up '{test_file_name}'.")
-
-if __name__ == "__main__":
-    main()
+    except Exception as e:
+        print(f"\nSimulation failed: {e}")
+    finally:
+        simulator.cleanup()
