@@ -2,78 +2,74 @@ import os
 import subprocess
 import time
 
-# --- Simulate a self-hosted runner registration and execution process ---
+# --- Simulate GitHub Actions Runner Registration ---
+# In a real scenario, this involves downloading the runner application,
+# configuring it with a token, and running 'config.sh' and 'run.sh'.
 
-def simulate_runner_registration(runner_name: str, org_url: str, token: str):
+def register_runner(organization_url: str, runner_token: str, runner_name: str, labels: list[str]):
     """
     Simulates the registration of a self-hosted runner.
-    In a real scenario, this involves downloading and configuring the runner software.
+    In reality, this involves executing `config.sh` and `run.sh` from the runner app.
     """
-    print(f"[{runner_name}] Simulating runner registration to {org_url}...")
-    # In reality, this would involve commands like:
-    # ./config.sh --url {org_url} --token {token} --name {runner_name} --unattended
-    time.sleep(2) # Simulate network call and configuration
-    print(f"[{runner_name}] Runner '{runner_name}' registered successfully.")
+    print(f"--- Registering Self-Hosted Runner '{runner_name}' ---")
+    print(f"Organization URL: {organization_url}")
+    print(f"Labels: {', '.join(labels)}")
+    print("Simulating runner application download and configuration...")
 
-def simulate_job_execution(runner_name: str, job_script: str):
+    # Placeholder for actual runner download and configuration commands
+    # Example:
+    # subprocess.run(["./config.sh", "--url", organization_url, "--token", runner_token, "--name", runner_name, "--labels", ",".join(labels), "--unattended"], check=True)
+    # subprocess.Popen(["./run.sh"], start_new_session=True) # Runs in background
+
+    print(f"Runner '{runner_name}' configured successfully (simulated).")
+    print(f"Waiting for GitHub to connect to runner (simulated, real runner would be polling).")
+
+def simulate_workflow_execution(runner_name: str, job_name: str, private_resource_check: bool = False):
     """
-    Simulates a job being run on the self-hosted runner.
-    This demonstrates control over the execution environment.
+    Simulates a workflow job running on the self-hosted runner.
+    Shows how the runner can access private resources.
     """
-    print(f"[{runner_name}] Starting job execution...")
-    print(f"[{runner_name}] Running script:\n{job_script}")
-    try:
-        # Simulate running a script with specific environment access
-        # In a real runner, this would be `subprocess.run` directly executing
-        # the workflow steps. Here, we simulate a shell script.
-        result = subprocess.run(job_script, shell=True, capture_output=True, text=True, check=True)
-        print(f"[{runner_name}] Job output:\n{result.stdout}")
-        print(f"[{runner_name}] Job completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"[{runner_name}] Job failed with error:\n{e.stderr}")
-        print(f"[{runner_name}] Stderr:\n{e.stderr}")
-    except Exception as e:
-        print(f"[{runner_name}] An unexpected error occurred: {e}")
+    print(f"\n--- Workflow Job '{job_name}' Running on '{runner_name}' ---")
+    print(f"Executing steps within the isolated environment of '{runner_name}'...")
 
-def main():
-    # --- Configuration for our simulated runner ---
-    RUNNER_NAME = os.getenv("RUNNER_NAME", "my-private-runner-01")
-    GITHUB_ORG_URL = os.getenv("GITHUB_ORG_URL", "https://github.com/my-enterprise-org")
-    # In a real scenario, this token would be securely fetched (e.g., from a vault)
-    RUNNER_REGISTRATION_TOKEN = os.getenv("RUNNER_TOKEN", "GH_TOKEN_EXAMPLE_12345")
+    # Simulate accessing a private network resource
+    if private_resource_check:
+        print("Attempting to access a simulated internal network resource...")
+        # In a real scenario, this would be a curl, ssh, or database connection
+        try:
+            # Simulate a successful connection to an internal service
+            time.sleep(1) # Network latency
+            print("Successfully connected to 'internal_service.private.corp' (simulated).")
+            print("Retrieved sensitive configuration data (simulated).")
+        except Exception as e:
+            print(f"Error accessing internal resource: {e} (simulated).")
+            # In a real workflow, this would fail the step
 
-    # --- Simulate Runner Setup ---
-    print("--- Self-Hosted Runner Simulation Start ---")
-    print(f"Simulating setup for runner: {RUNNER_NAME}")
-
-    simulate_runner_registration(RUNNER_NAME, GITHUB_ORG_URL, RUNNER_REGISTRATION_TOKEN)
-
-    # --- Simulate a GitHub Actions job running on this self-hosted runner ---
-    # This job simulates accessing an internal resource (e.g., a database, an internal API)
-    # or using a specific tool pre-installed on the runner's machine.
-    # We use a simple echo and `ls` here as a stand-in.
-    JOB_SCRIPT = """
-echo "--- Starting build steps ---"
-echo "Accessing internal network resource (simulated):"
-# In a real scenario, this could be 'curl http://internal-api.mycompany.com/status'
-# or 'psql -h internal-db.mycompany.com -U user -c "SELECT version();"'
-echo "  [Simulated] Connected to internal service on private network."
-echo "Using custom toolchain (simulated):"
-# In a real scenario, this could be a custom compiler or security scanner
-# e.g., '/opt/custom-tools/security-scanner --project-path .'
-ls -la /tmp # Show temporary files - representing custom environment
-echo "--- Build steps finished ---"
-    """
-
-    # In a real runner, it would now be polling GitHub for jobs.
-    print(f"\n[{RUNNER_NAME}] Runner is now online and waiting for jobs...")
-    time.sleep(3) # Simulate polling delay
-
-    # Trigger job execution
-    print(f"\n[{RUNNER_NAME}] GitHub Actions dispatched a job to this runner!")
-    simulate_job_execution(RUNNER_NAME, JOB_SCRIPT)
-
-    print("\n--- Self-Hosted Runner Simulation End ---")
+    # Simulate build/deploy steps
+    print("Executing build command: 'make build' (simulated)...")
+    time.sleep(0.5)
+    print("Build successful.")
+    print("Executing deploy command: 'deploy_to_production.sh' (simulated)...")
+    time.sleep(0.5)
+    print("Deployment successful.")
+    print(f"--- Workflow Job '{job_name}' Completed on '{runner_name}' ---")
 
 if __name__ == "__main__":
-    main()
+    # --- Configuration for our simulated self-hosted runner ---
+    GITHUB_ORG_URL = "https://github.com/my-enterprise-org"
+    RUNNER_REGISTRATION_TOKEN = "GH_RUNNER_SECRET_TOKEN_XYZ" # A temporary token from GitHub
+    RUNNER_NAME = "enterprise-private-cloud-runner-01"
+    RUNNER_LABELS = ["self-hosted", "linux", "private-network", "production-env"]
+
+    # 1. Simulate runner registration
+    register_runner(GITHUB_ORG_URL, RUNNER_REGISTRATION_TOKEN, RUNNER_NAME, RUNNER_LABELS)
+
+    # 2. Simulate a workflow job running on this runner
+    # This job requires access to internal network resources.
+    simulate_workflow_execution(RUNNER_NAME, "Build & Deploy Internal App", private_resource_check=True)
+
+    # 3. Simulate another job that might not need private access but uses custom tools
+    simulate_workflow_execution(RUNNER_NAME, "Run Custom Security Scans")
+
+    print("\nSelf-hosted runner demonstration complete.")
+    print("This runner provides a secure, controlled, and network-isolated environment for GitHub Actions.")
