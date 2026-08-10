@@ -1,114 +1,99 @@
-# This Python script simulates a GitHub Actions workflow's expression evaluation.
-# It demonstrates how context data can be used with expressions to create dynamic logic.
+import os
 
-# --- Simulate GitHub Actions Contexts ---
-# In a real GitHub Action, these would be automatically provided.
-# Here, we define them as Python dictionaries for demonstration.
+# --- GitHub Actions Contexts (Simulated) ---
+# In a real GitHub Actions workflow, these would be automatically provided.
+# We're simulating them for a runnable Python example.
 
 github_context = {
     "event": {
         "pull_request": {
-            "head": {
-                "ref": "feature/new-api-endpoint"
-            },
-            "base": {
-                "ref": "main"
-            }
+            "head": {"ref": "feature/new-api-endpoint"},
+            "base": {"ref": "main"},
+            "merged": False,
         },
-        "repository": {
-            "name": "my-awesome-app"
-        },
-        "commits": [
-            {"message": "feat: Add user authentication"},
-            {"message": "fix: Correct database migration"}
-        ]
+        "repository": {"default_branch": "main"},
     },
     "ref": "refs/heads/feature/new-api-endpoint",
-    "sha": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-    "workflow": "CI/CD Pipeline"
+    "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+    "run_id": "123456789",
+    "actor": "octocat",
+}
+
+job_context = {
+    "status": "success",  # Can be 'success', 'failure', 'cancelled'
+    "container": {"id": "abcdef12345"},
+}
+
+steps_context = {
+    "checkout": {"outputs": {}},
+    "build": {"outputs": {"build_id": "myapp-v1.0-123", "image_tag": "latest"}},
 }
 
 env_context = {
-    "NODE_VERSION": "16",
-    "DEPLOY_ENVIRONMENT": "staging"
+    "DEPLOY_ENV": "staging",
+    "GREETING_MESSAGE": "Hello from workflow!",
 }
 
-# Simulate outputs from a previous job/step
-# In a real workflow, this would be `needs.<job_id>.outputs.<output_name>`
-outputs_context = {
-    "build_job": {
-        "status": "success",
-        "version": "1.0.0-beta"
-    }
-}
+# --- GitHub Actions Expression Language Simulation ---
+# This function simulates the evaluation of GitHub Actions expressions.
+# It's a simplified version focusing on common patterns like `startsWith`, `contains`, `==`, `!=`, and context access.
+def evaluate_expression(expression: str, github: dict, job: dict, steps: dict, env: dict) -> bool:
+    # Replace context references with their simulated values
+    expression = expression.replace("github.", "github_context['")
+    expression = expression.replace("job.", "job_context['")
+    expression = expression.replace("steps.", "steps_context['")
+    expression = expression.replace("env.", "env_context['")
 
-# --- Expression Evaluation Function ---
-# This function mimics how GitHub Actions evaluates expressions.
-# For simplicity, it uses basic string matching and dictionary lookups.
-# A real expression engine is far more complex (e.g., handling operators, functions).
+    # Handle common functions (startsWith, contains)
+    expression = expression.replace("startsWith(", "str(").replace("), ", ").startswith(str(")
+    expression = expression.replace("contains(", "str(").replace("), ", ").find(str(") != -1")
 
-def evaluate_expression(expression: str, contexts: dict) -> bool:
-    """
-    Evaluates a simplified GitHub Actions-like expression against provided contexts.
-    Supports basic `github.ref`, `github.event.pull_request.head.ref`, `env.<VAR>`,
-    `outputs.<job_id>.<output_name>`, `contains`, and `startsWith`.
-    """
-    if "github.ref == 'refs/heads/main'" in expression:
-        return contexts["github"]["ref"] == "refs/heads/main"
-    elif "github.event.pull_request.head.ref == 'feature/new-api-endpoint'" in expression:
-        return contexts["github"]["event"]["pull_request"]["head"]["ref"] == "feature/new-api-endpoint"
-    elif "env.DEPLOY_ENVIRONMENT == 'production'" in expression:
-        return contexts["env"]["DEPLOY_ENVIRONMENT"] == "production"
-    elif "outputs.build_job.status == 'success'" in expression:
-        return contexts["outputs"]["build_job"]["status"] == "success"
-    elif "contains(github.event.commits[0].message, 'feat:')" in expression:
-        return "feat:" in contexts["github"]["event"]["commits"][0]["message"]
-    elif "startsWith(github.ref, 'refs/heads/feature/')" in expression:
-        return contexts["github"]["ref"].startswith("refs/heads/feature/")
-    return False # Default for unmatched expressions
+    # Finalize context access for evaluation
+    expression = expression.replace("']", "']")
 
-# --- Workflow Logic Using Expressions ---
+    try:
+        # Use eval to interpret the expression string as Python code
+        # In a real scenario, this would be handled by GitHub's secure expression parser.
+        # We're making a strong assumption about the expression's safety for this demo.
+        return eval(expression, {"github_context": github, "job_context": job, "steps_context": steps, "env_context": env})
+    except Exception as e:
+        print(f"Error evaluating expression '{expression}': {e}")
+        return False
 
-print("--- Simulating Workflow Logic ---")
+# --- Workflow Logic using Expressions ---
 
-# Example 1: Conditional job based on branch name
-if evaluate_expression("github.ref == 'refs/heads/main'", {"github": github_context}):
-    print("Action: Deploy to Production (triggered by push to main branch).")
+print("--- Simulating Workflow Conditions ---")
+
+# Condition 1: Run only on pull requests targeting 'main'
+condition_pr_to_main = "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'"
+if evaluate_expression(condition_pr_to_main, github_context, job_context, steps_context, env_context):
+    print(f"Condition 'Deploy PR to Main': TRUE. Deploying pull request to main.")
 else:
-    print("Action: Not deploying to Production (not on main branch).")
+    print(f"Condition 'Deploy PR to Main': FALSE. Not a PR to main.")
 
-# Example 2: Step conditional on pull request branch
-if evaluate_expression("github.event.pull_request.head.ref == 'feature/new-api-endpoint'", {"github": github_context}):
-    print("Action: Run API integration tests (feature branch specific).")
+# Condition 2: Deploy to staging if branch starts with 'feature/'
+condition_deploy_staging = "startsWith(github.ref, 'refs/heads/feature/') && env.DEPLOY_ENV == 'staging'"
+if evaluate_expression(condition_deploy_staging, github_context, job_context, steps_context, env_context):
+    print(f"Condition 'Deploy Staging Feature Branch': TRUE. Deploying to staging.")
 else:
-    print("Action: Skipping API integration tests (not a specific feature branch).")
+    print(f"Condition 'Deploy Staging Feature Branch': FALSE. Not a feature branch or not staging env.")
 
-# Example 3: Step conditional on environment variable
-if evaluate_expression("env.DEPLOY_ENVIRONMENT == 'production'", {"env": env_context}):
-    print("Action: Running production-specific build steps.")
+# Condition 3: Only deploy to production if build step succeeded and image tag is 'latest'
+condition_deploy_prod = "job.status == 'success' && steps.build.outputs.image_tag == 'latest' && env.DEPLOY_ENV == 'production'"
+# Modify env_context to simulate production deployment for this check
+env_context["DEPLOY_ENV"] = "production"
+if evaluate_expression(condition_deploy_prod, github_context, job_context, steps_context, env_context):
+    print(f"Condition 'Deploy Production': TRUE. Deploying {steps_context['build']['outputs']['build_id']} to production.")
 else:
-    print("Action: Running development/staging build steps.")
+    print(f"Condition 'Deploy Production': FALSE. Build not ready or not production env.")
+env_context["DEPLOY_ENV"] = "staging" # Reset for other checks
 
-# Example 4: Job conditional on previous job's output
-if evaluate_expression("outputs.build_job.status == 'success'", {"outputs": outputs_context}):
-    print("Action: Proceeding to deployment phase (previous build was successful).")
+# Condition 4: Send a notification if workflow actor is 'octocat'
+condition_notify_octocat = "github.actor == 'octocat'"
+if evaluate_expression(condition_notify_octocat, github_context, job_context, steps_context, env_context):
+    print(f"Condition 'Notify Octocat': TRUE. Sending notification to {github_context['actor']}.")
 else:
-    print("Action: Halting workflow (previous build failed).")
+    print(f"Condition 'Notify Octocat': FALSE. Not octocat.")
 
-# Example 5: Conditional based on commit message content
-if evaluate_expression("contains(github.event.commits[0].message, 'feat:')", {"github": github_context}):
-    print("Action: Detected a 'feat:' commit, running new feature checks.")
-else:
-    print("Action: No 'feat:' commit detected, skipping new feature checks.")
-
-# Example 6: Dynamic environment selection based on branch prefix
-# In a real workflow, this might be used to set an 'environment' variable
-branch_prefix_staging = evaluate_expression("startsWith(github.ref, 'refs/heads/feature/')", {"github": github_context})
-branch_prefix_dev = evaluate_expression("startsWith(github.ref, 'refs/heads/develop/')", {"github": github_context})
-
-if branch_prefix_staging:
-    print(f"Detected feature branch: {github_context['ref']}. Setting target environment to 'staging'.")
-elif branch_prefix_dev:
-    print(f"Detected develop branch: {github_context['ref']}. Setting target environment to 'development'.")
-else:
-    print(f"Defaulting environment based on branch: {github_context['ref']}.")
+print(f"\nExample of accessing a specific output: Build ID is {steps_context['build']['outputs']['build_id']}")
+print(f"Example of accessing an environment variable: Greeting is '{env_context['GREETING_MESSAGE']}'")
