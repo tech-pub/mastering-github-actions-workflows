@@ -1,84 +1,92 @@
-# actions/my-custom-action/action.yml
-# This file defines a GitHub Action using JavaScript.
-# name: 'My Custom Action'
-# description: 'Performs a standardized internal check and reports.'
-# inputs:
-#   project-name:
-#     description: 'The name of the project being checked.'
-#     required: true
-# outputs:
-#   status:
-#     description: 'The status of the internal check (success or failure).'
-# runs:
-#   using: 'node16'
-#   main: 'index.js'
+# python_action.py
+
+import os
+import json
+import requests
+
+def run_custom_security_scan(repo_url, branch_name, severity_threshold='HIGH'):
+    """
+    Simulates a custom security scan action tailored for an organization.
+    This example uses a dummy API call and predefined vulnerabilities.
+
+    In a real scenario, this would integrate with internal security tools,
+    proprietary scanners, or custom rule engines.
+    """
+    print(f"--- Running Custom Security Scan for '{repo_url}' on branch '{branch_name}' ---")
+
+    # Simulate fetching custom security rules or configurations from an internal system
+    # In a real action, this might be a call to an internal API or a configuration file.
+    try:
+        # Dummy API call simulation - replace with actual internal service discovery/call
+        response = requests.get('https://api.example.com/internal/security-rules', timeout=5)
+        response.raise_for_status()
+        internal_security_config = response.json()
+        print(f"Loaded internal security config: {internal_security_config.get('rules_version', 'N/A')}")
+    except (requests.exceptions.RequestException, json.JSONDecodeError):
+        print("Could not connect to internal security rules API. Using default rules.")
+        internal_security_config = {"rules_version": "1.0", "custom_checks": ["SQL_INJECTION_PATTERN", "HARDCODED_CREDENTIALS"]}
 
 
-# actions/my-custom-action/index.js
-# This is the JavaScript code for the custom action.
-# const core = require('@actions/core');
-# const github = require('@actions/github');
+    # Simulate scan results based on custom organizational rules
+    found_vulnerabilities = []
+    if "SQL_INJECTION_PATTERN" in internal_security_config.get("custom_checks", []):
+        if "sensitive_query" in repo_url: # Dummy logic
+            found_vulnerabilities.append({"type": "SQL Injection", "severity": "CRITICAL", "file": "src/data.py"})
+    if "HARDCODED_CREDENTIALS" in internal_security_config.get("custom_checks", []):
+        if "config.py" in repo_url: # Dummy logic
+            found_vulnerabilities.append({"type": "Hardcoded Credentials", "severity": "HIGH", "file": "src/config.py"})
 
-# try {
-#   const projectName = core.getInput('project-name');
-#   console.log(`Performing internal check for project: ${projectName}`);
+    # Evaluate against the provided severity threshold
+    action_successful = True
+    critical_issues_found = False
+    for vuln in found_vulnerabilities:
+        print(f"  - Found: {vuln['type']} (Severity: {vuln['severity']}) in {vuln['file']}")
+        if vuln['severity'] == 'CRITICAL':
+            critical_issues_found = True
+        if severity_threshold in ['CRITICAL', 'HIGH'] and vuln['severity'] in ['CRITICAL', 'HIGH']:
+            action_successful = False
+        elif severity_threshold == 'MEDIUM' and vuln['severity'] in ['CRITICAL', 'HIGH', 'MEDIUM']:
+            action_successful = False
 
-#   // Simulate a complex internal check based on company standards
-#   // In a real scenario, this might involve API calls,
-#   # database queries, or specific file validations.
-#   const isStandardCompliant = projectName.startsWith('ORG-') && projectName.length > 5;
+    if not found_vulnerabilities:
+        print("  No custom security vulnerabilities detected.")
+    else:
+        print(f"--- Scan finished. Total vulnerabilities: {len(found_vulnerabilities)} ---")
 
-#   if (isStandardCompliant) {
-#     core.setOutput('status', 'success');
-#     console.log(`Project '${projectName}' is compliant with organizational standards.`);
-#   } else {
-#     core.setFailed(`Project '${projectName}' does not meet organizational standards.`);
-#     core.setOutput('status', 'failure');
-#   }
-# } catch (error) {
-#   core.setFailed(error.message);
-# }
+    # Set GitHub Actions output
+    # In a real GitHub Action, these would be echoed to stdout in a specific format
+    # print(f"::set-output name=scan_successful::{'true' if action_successful else 'false'}")
+    # print(f"::set-output name=critical_issues_found::{'true' if critical_issues_found else 'false'}")
+    # print(f"::set-output name=vulnerabilities_json::{json.dumps(found_vulnerabilities)}")
 
+    # For demonstration, we'll just print them.
+    print(f"\n[Action Output Simulation]")
+    print(f"scan_successful: {'true' if action_successful else 'false'}")
+    print(f"critical_issues_found: {'true' if critical_issues_found else 'false'}")
+    print(f"vulnerabilities_json: {json.dumps(found_vulnerabilities, indent=2)}")
 
-# .github/workflows/standardized-build.yml
-# This file demonstrates how to use the custom action in a workflow.
-# name: Standardized Build Check
+    if not action_successful:
+        print("\n::error::Custom security scan failed due to high-severity vulnerabilities.")
+        # In a real GitHub Action, os.exit(1) would fail the workflow.
+        # exit(1)
+    else:
+        print("\nCustom security scan passed.")
 
-# on:
-#   push:
-#     branches:
-#       - main
+if __name__ == "__main__":
+    # Simulate GitHub Action inputs from environment variables
+    # In a real GitHub Action, inputs are passed as environment variables prefixed with INPUT_
+    # For example, INPUT_REPO_URL, INPUT_BRANCH, INPUT_SEVERITY_THRESHOLD
+    repo_url = os.getenv('INPUT_REPO_URL', 'https://github.com/my-org/my-sensitive-query-project')
+    branch_name = os.getenv('INPUT_BRANCH', 'main')
+    severity_threshold = os.getenv('INPUT_SEVERITY_THRESHOLD', 'HIGH')
 
-# jobs:
-#   build-and-check:
-#     runs-on: ubuntu-latest
-#     steps:
-#     - name: Checkout repository
-#       uses: actions/checkout@v3
+    run_custom_security_scan(repo_url, branch_name, severity_threshold)
 
-#     - name: Run internal compliance check
-#       uses: ./actions/my-custom-action
-#       id: compliance_check
-#       with:
-#         project-name: 'ORG-WebApp' # Example of a compliant project name
-
-#     - name: Report check status
-#       run: |
-#         echo "Compliance check result: ${{ steps.compliance_check.outputs.status }}"
-#         if [ "${{ steps.compliance_check.outputs.status }}" == "failure" ]; then
-#           echo "Build failed due to non-compliant project name."
-#           exit 1
-#         fi
-
-#     - name: Run internal compliance check (non-compliant example)
-#       uses: ./actions/my-custom-action
-#       id: non_compliant_check
-#       with:
-#         project-name: 'WebApp' # Example of a non-compliant project name
-
-#     - name: Report non-compliant check status
-#       run: |
-#         echo "Non-compliant check result: ${{ steps.non_compliant_check.outputs.status }}"
-#         if [ "${{ steps.non_compliant_check.outputs.status }}" == "failure" ]; then
-#           echo "Expected failure for non-compliant project name."
-#         fi
+    # Example 2: Simulating a different repository and config
+    print("\n" + "="*80 + "\n")
+    print("Simulating another scan with a different repository...")
+    os.environ['INPUT_REPO_URL'] = 'https://github.com/my-org/my-other-project-config.py'
+    os.environ['INPUT_SEVERITY_THRESHOLD'] = 'MEDIUM'
+    repo_url_2 = os.getenv('INPUT_REPO_URL')
+    severity_threshold_2 = os.getenv('INPUT_SEVERITY_THRESHOLD')
+    run_custom_security_scan(repo_url_2, branch_name, severity_threshold_2)
